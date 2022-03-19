@@ -1,3 +1,7 @@
+use std::fmt::Display;
+
+use strum::{AsRefStr, EnumIter, IntoEnumIterator};
+
 use crate::nihilists::Nihilists;
 
 const FOOD_TO_BABIES: f32 = 0.05;
@@ -22,6 +26,26 @@ pub struct Economy {
     day: usize,
 }
 
+impl Display for Economy {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "-------------------------")?;
+        writeln!(f, "Day {} ({})", self.day, Season::from(self.day).as_ref())?;
+        writeln!(f, "-------------------------")?;
+        writeln!(f, "🍖 {:>5}", self.food)?;
+        writeln!(f, "🪵 {:>5}", self.wood)?;
+        writeln!(f, "🪨 {:>5}", self.stone)?;
+        writeln!(f, "🪙 {:>5}", self.iron)?;
+        writeln!(f)?;
+        writeln!(f, "📦 {:>5}", self.storage)?;
+        writeln!(f)?;
+        writeln!(f, "🏭 {:>4.1}%", (self.efficiency - 1.0) * 100.0)?;
+        writeln!(f)?;
+        writeln!(f, "👨‍👩‍👧‍👦 {:>5}", self.population)?;
+        writeln!(f, "🛖 {:>5}", self.population_cap)?;
+        writeln!(f, "-------------------------")
+    }
+}
+
 impl Default for Economy {
     fn default() -> Self {
         Self {
@@ -42,6 +66,10 @@ impl Default for Economy {
 }
 
 impl Economy {
+    pub fn extinct(&self) -> bool {
+        self.population < 2
+    }
+
     pub fn next(&self, _: &Nihilists) -> Self {
         // Get the standard production per citizen based on the season
         let production = Season::from(self.day).production();
@@ -126,6 +154,7 @@ pub enum Building {
     Hunting,
 }
 
+#[derive(Debug, EnumIter, AsRefStr)]
 pub enum Season {
     Spring,
     Summer,
@@ -134,6 +163,15 @@ pub enum Season {
 }
 
 impl Season {
+    pub fn length(&self) -> usize {
+        match self {
+            Self::Spring => 10,
+            Self::Summer => 23,
+            Self::Autumn => 15,
+            Self::Winter => 20,
+        }
+    }
+
     // [Food, Wood, Stone, Iron]
     pub fn production(&self) -> [usize; 4] {
         match self {
@@ -146,13 +184,19 @@ impl Season {
 }
 
 impl From<usize> for Season {
-    fn from(day: usize) -> Self {
-        match day % 360 {
-            0..=89 => Self::Spring,
-            90..=179 => Self::Summer,
-            180..=269 => Self::Autumn,
-            270..=359 => Self::Winter,
-            _ => panic!("Wat?"),
+    fn from(mut day: usize) -> Self {
+        let year: usize = Self::iter().map(|s| s.length()).sum();
+
+        day %= year;
+
+        for season in Self::iter() {
+            if day < season.length() {
+                return season;
+            } else {
+                day -= season.length();
+            }
         }
+
+        panic!("Impossible");
     }
 }

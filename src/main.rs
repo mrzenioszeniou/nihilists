@@ -12,7 +12,12 @@ fn main() {
     loop {
         state = state.next(&nihilists);
 
-        println!("{:#?}", state);
+        println!("{}", state);
+
+        if state.extinct() {
+            println!("The human race is extinct! 🎉");
+            break;
+        }
 
         // std::thread::sleep(Duration::from_secs(5));
         std::thread::sleep(Duration::from_millis(50));
