@@ -1,55 +1,110 @@
-use std::collections::BTreeMap;
+use crate::nihilists::Nihilists;
 
-const BOOMER_METER_SIZE: usize = 20;
+const FOOD_TO_BABIES: f32 = 0.05;
+const FOOD_TO_DEATHS: f32 = 0.5;
+const EFFICIENCY_STEP: f32 = 0.001;
+const STORAGE_STEP: usize = 1;
+const HOUSING_STEP: usize = 1;
 
 #[derive(Debug)]
-pub struct State {
-    resources: BTreeMap<Resource, usize>,
-    placements: BTreeMap<Building, usize>,
-    boomer_meter: usize,
+pub struct Economy {
+    food: usize,
+    wood: usize,
+    stone: usize,
+    iron: usize,
+    storage: usize,
+
+    efficiency: f32,
+
     population: usize,
+    population_cap: usize,
+
     day: usize,
 }
 
-impl Default for State {
+impl Default for Economy {
     fn default() -> Self {
         Self {
-            resources: BTreeMap::from([
-                (Resource::Food, 0),
-                (Resource::Wood, 0),
-                (Resource::Stone, 0),
-                (Resource::Iron, 0),
-            ]),
-            placements: Default::default(),
-            boomer_meter: 0,
-            population: 2,
+            food: 20,
+            wood: 0,
+            stone: 0,
+            iron: 0,
+            storage: 50,
+
+            efficiency: 1.0,
+
+            population: 10,
+            population_cap: 20,
+
             day: 0,
         }
     }
 }
 
-impl State {
-    fn unemployed(&self) -> usize {
-        self.population - self.placements.values().sum::<usize>()
-    }
+impl Economy {
+    pub fn next(&self, _: &Nihilists) -> Self {
+        // Get the standard production per citizen based on the season
+        let production = Season::from(self.day).production();
 
-    pub fn next(&self) -> Self {
-        let resources = Season::from(self.day)
-            .production()
-            .into_iter()
-            .map(|(res, cnt)| {
-                let curr = self.resources.get(&res).unwrap();
-                (res, curr + cnt)
-            })
-            .collect();
+        // Multiply it by the population and efficiency modifier
+        let mut food = ((production[0] * self.population) as f32 * self.efficiency) as usize;
+        let mut wood = ((production[1] * self.population) as f32 * self.efficiency) as usize;
+        let mut stone = ((production[2] * self.population) as f32 * self.efficiency) as usize;
+        let mut iron = ((production[3] * self.population) as f32 * self.efficiency) as usize;
 
-        let boomer_meter = self.boomer_meter + self.unemployed() / 2;
+        // Add the previous stockpiles
+        food += self.food;
+        wood += self.wood;
+        stone += self.stone;
+        iron += self.iron;
+
+        // Feed the masses
+        let population = if food >= self.population {
+            // Feed the current population
+            food -= self.population;
+
+            // Babies!
+            let space = self.population_cap - self.population;
+            let births = std::cmp::min(space, (food as f32 * FOOD_TO_BABIES) as usize);
+            food -= births;
+
+            self.population + births
+        } else {
+            let missing_food = self.population - food;
+            food = 0;
+            self.population - (missing_food as f32 * FOOD_TO_DEATHS) as usize
+        };
+
+        // Increase efficiency
+        let mut efficiency = self.efficiency;
+        if iron > 0 {
+            efficiency += EFFICIENCY_STEP;
+            iron -= 1;
+        }
+
+        // Increase storage size
+        let mut storage_size = self.storage;
+        if stone > 0 {
+            storage_size += STORAGE_STEP;
+            stone -= 1;
+        }
+
+        // Increase population_cap
+        let mut population_cap = self.population_cap;
+        if wood > 0 {
+            population_cap += HOUSING_STEP;
+            wood -= 1;
+        }
 
         Self {
-            resources,
-            placements: self.placements.clone(),
-            boomer_meter: boomer_meter % BOOMER_METER_SIZE,
-            population: self.population + boomer_meter / BOOMER_METER_SIZE,
+            food: std::cmp::min(food, self.storage),
+            wood: std::cmp::min(wood, self.storage),
+            stone: std::cmp::min(stone, self.storage),
+            iron: std::cmp::min(iron, self.storage),
+            storage: storage_size,
+            efficiency,
+            population,
+            population_cap,
             day: self.day + 1,
         }
     }
@@ -57,10 +112,10 @@ impl State {
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Resource {
-    Wood,
-    Food,
-    Stone,
-    Iron,
+    Food,  //    Excess => +population |  Lack => -population
+    Wood,  //    Excess => +pop_cap    |  Lack =>
+    Stone, //    Excess => +storage    |  Lack =>
+    Iron,  //    Excess => +efficiency |  Lack =>
 }
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
@@ -79,33 +134,14 @@ pub enum Season {
 }
 
 impl Season {
-    pub fn production(&self) -> BTreeMap<Resource, usize> {
-        BTreeMap::from(match self {
-            Self::Spring => [
-                (Resource::Food, 2),
-                (Resource::Wood, 4),
-                (Resource::Stone, 0),
-                (Resource::Iron, 1),
-            ],
-            Self::Summer => [
-                (Resource::Food, 4),
-                (Resource::Wood, 2),
-                (Resource::Stone, 1),
-                (Resource::Iron, 0),
-            ],
-            Self::Autumn => [
-                (Resource::Food, 1),
-                (Resource::Wood, 0),
-                (Resource::Stone, 4),
-                (Resource::Iron, 2),
-            ],
-            Self::Winter => [
-                (Resource::Food, 0),
-                (Resource::Wood, 1),
-                (Resource::Stone, 2),
-                (Resource::Iron, 4),
-            ],
-        })
+    // [Food, Wood, Stone, Iron]
+    pub fn production(&self) -> [usize; 4] {
+        match self {
+            Self::Spring => [1, 1, 0, 0],
+            Self::Summer => [2, 0, 0, 0],
+            Self::Autumn => [1, 0, 1, 0],
+            Self::Winter => [0, 0, 0, 1],
+        }
     }
 }
 
