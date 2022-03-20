@@ -1,3 +1,4 @@
+use strum::IntoEnumIterator;
 use tui::{
     backend::Backend,
     layout::{Constraint, Direction, Layout},
@@ -7,18 +8,18 @@ use tui::{
 };
 
 use crate::{
-    economy::{Economy, Season},
+    economy::{Building, Economy, Season},
     nihilists::Nihilists,
 };
 
-pub fn draw<B: Backend>(frame: &mut Frame<B>, economy: &Economy, _: &Nihilists) {
+pub fn draw<B: Backend>(frame: &mut Frame<B>, economy: &Economy, nils: &Nihilists) {
     // Screen
     let layout = Layout::default()
         .direction(Direction::Vertical)
         .margin(1)
         .constraints([
-            Constraint::Percentage(30),
-            Constraint::Percentage(30),
+            Constraint::Length(8),
+            Constraint::Length(8),
             Constraint::Percentage(30),
         ])
         .split(frame.size());
@@ -61,7 +62,7 @@ pub fn draw<B: Backend>(frame: &mut Frame<B>, economy: &Economy, _: &Nihilists) 
 
     // Population Cap
     list_items.push(ListItem::new(format!(
-        "🏭 Efficiency  {:.2}%",
+        "🏭 Efficiency  {:.1}%",
         economy.efficiency * 100.0
     )));
 
@@ -114,9 +115,75 @@ pub fn draw<B: Backend>(frame: &mut Frame<B>, economy: &Economy, _: &Nihilists) 
     frame.render_widget(iron_gauge, storage_layout[3]);
     //----------------------------------------------------------------------------------------------
 
-    let block_nihilists = Block::default().title("Nihilists").borders(Borders::ALL);
-    let block_headlines = Block::default().title("Headlines").borders(Borders::ALL);
+    //------ Nihilists -----------------------------------------------------------------------------
+    frame.render_widget(
+        Block::default()
+            .title("🚩 Nihilists 👺")
+            .borders(Borders::ALL),
+        layout[1],
+    );
 
-    frame.render_widget(block_nihilists, layout[1]);
-    frame.render_widget(block_headlines, layout[2]);
+    let mut nihilists_layout = Layout::default()
+        .direction(Direction::Horizontal)
+        .margin(1)
+        .constraints([
+            Constraint::Percentage(20),
+            Constraint::Percentage(20),
+            Constraint::Percentage(20),
+            Constraint::Percentage(20),
+            Constraint::Percentage(20),
+        ])
+        .split(layout[1]);
+
+    nihilists_layout[0].x += 1;
+    nihilists_layout[0].y += 1;
+
+    nihilists_layout[0].width -= 1;
+    nihilists_layout[0].height -= 1;
+
+    // Overall
+    frame.render_widget(
+        List::new(vec![
+            // Undercover
+            ListItem::new(format!("  🥸 Undercover {:>3}", nils.undercover)),
+            // Recruiters
+            ListItem::new(format!("  🤝 Recruiters {:>3}", nils.recruiters)),
+            // Vee cur off your Johnson
+            ListItem::new(format!("  🔪 Hitmen {:>7}", nils.hitmen)),
+            // Efficiency§
+            ListItem::new(format!("  ⚙️  Efficiency {:.1}%", nils.efficiency * 100.0)),
+        ]),
+        nihilists_layout[0],
+    );
+
+    for (i, building) in Building::iter().enumerate() {
+        frame.render_widget(
+            List::new(vec![
+                ListItem::new(format!(
+                    "  📣 Agitators {}",
+                    nils.agitators.get(&building).unwrap()
+                )),
+                ListItem::new(format!(
+                    "  🧨 Saboteurs {}",
+                    nils.saboteurs.get(&building).unwrap()
+                )),
+                ListItem::new(format!(
+                    "  💰 Embezzlers {}",
+                    nils.embezzlers.get(&building).unwrap()
+                )),
+            ])
+            .block(
+                Block::default()
+                    .title(building.to_string())
+                    .borders(Borders::ALL),
+            ),
+            nihilists_layout[i + 1],
+        );
+    }
+    //----------------------------------------------------------------------------------------------
+
+    frame.render_widget(
+        Block::default().title("Headlines").borders(Borders::ALL),
+        layout[2],
+    );
 }

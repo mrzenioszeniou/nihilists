@@ -5,7 +5,7 @@ use strum::{AsRefStr, EnumIter, IntoEnumIterator};
 use crate::nihilists::Nihilists;
 
 const FOOD_TO_BABIES: f32 = 0.05;
-const FOOD_TO_DEATHS: f32 = 0.8;
+const FOOD_TO_DEATHS: f32 = 0.35;
 const EFFICIENCY_STEP: f32 = 0.001;
 const STORAGE_STEP: usize = 1;
 const HOUSING_STEP: usize = 1;
@@ -154,6 +154,17 @@ pub enum Building {
     Quarry,
     Foundry,
     Hunting,
+}
+
+impl std::fmt::Display for Building {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Lumberyard => write!(f, "🏹 Hunter's Lodge 🍖"),
+            Self::Quarry => write!(f, "🪓 Lumberyard 🪵"),
+            Self::Foundry => write!(f, "⛏ Quarry 🪨"),
+            Self::Hunting => write!(f, "🔨 Mine 🪙"),
+        }
+    }
 }
 
 #[derive(Debug, EnumIter, AsRefStr)]

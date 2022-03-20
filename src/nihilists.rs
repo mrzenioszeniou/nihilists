@@ -13,15 +13,15 @@ const EFFICIENCY_STEP: f32 = 0.001;
 
 #[derive(Clone, Debug)]
 pub struct Nihilists {
-    agitators: HashMap<Building, usize>,
-    saboteurs: HashMap<Building, usize>,
-    embezzlers: HashMap<Building, usize>,
+    pub agitators: HashMap<Building, usize>,
+    pub saboteurs: HashMap<Building, usize>,
+    pub embezzlers: HashMap<Building, usize>,
 
-    undercover: usize,
-    recruiters: usize,
-    hitmen: usize,
+    pub undercover: usize,
+    pub recruiters: usize,
+    pub hitmen: usize,
 
-    efficiency: f32,
+    pub efficiency: f32,
 
     rng: ThreadRng,
 }
