@@ -8,3 +8,7 @@ edition = "2021"
 [dependencies] 
 strum = { version = "0.24", features = ["derive"] }
 rand = "0.8"
+tui = "0.17"
+crossterm = "0.22"
+ctrlc = "3.2"
+emoji = "0.2"

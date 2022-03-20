@@ -12,18 +12,18 @@ const HOUSING_STEP: usize = 1;
 
 #[derive(Debug)]
 pub struct Economy {
-    food: usize,
-    wood: usize,
-    stone: usize,
-    iron: usize,
-    storage: usize,
+    pub food: usize,
+    pub wood: usize,
+    pub stone: usize,
+    pub iron: usize,
+    pub storage: usize,
 
-    efficiency: f32,
+    pub efficiency: f32,
 
-    population: usize,
-    population_cap: usize,
+    pub population: usize,
+    pub population_cap: usize,
 
-    day: usize,
+    pub day: usize,
 }
 
 impl Display for Economy {
@@ -182,6 +182,22 @@ impl Season {
             Self::Autumn => [1.5, 0.0, 0.1, 0.0],
             Self::Winter => [0.5, 0.0, 0.0, 0.1],
         }
+    }
+}
+
+impl std::fmt::Display for Season {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{} {}",
+            self.as_ref(),
+            match self {
+                Self::Spring => "🌸",
+                Self::Summer => "🌞",
+                Self::Autumn => "🍁",
+                Self::Winter => "❄️",
+            }
+        )
     }
 }
 
