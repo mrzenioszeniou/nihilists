@@ -53,7 +53,7 @@ impl Default for Economy {
             wood: 0,
             stone: 0,
             iron: 0,
-            storage: 50,
+            storage: 200,
 
             efficiency: 1.0,
 
@@ -74,11 +74,13 @@ impl Economy {
         // Get the standard production per citizen based on the season
         let production = Season::from(self.day).production();
 
+        let population_f = self.population as f32;
+
         // Multiply it by the population and efficiency modifier
-        let mut food = ((production[0] * self.population) as f32 * self.efficiency) as usize;
-        let mut wood = ((production[1] * self.population) as f32 * self.efficiency) as usize;
-        let mut stone = ((production[2] * self.population) as f32 * self.efficiency) as usize;
-        let mut iron = ((production[3] * self.population) as f32 * self.efficiency) as usize;
+        let mut food = (production[0] * population_f * self.efficiency) as usize;
+        let mut wood = (production[1] * population_f * self.efficiency) as usize;
+        let mut stone = (production[2] * population_f * self.efficiency) as usize;
+        let mut iron = (production[3] * population_f * self.efficiency) as usize;
 
         // Add the previous stockpiles
         food += self.food;
@@ -93,7 +95,7 @@ impl Economy {
 
             // Babies!
             let space = self.population_cap - self.population;
-            let births = std::cmp::min(space, (food as f32 * FOOD_TO_BABIES) as usize);
+            let births = std::cmp::min(space, (food as f32 * FOOD_TO_BABIES).ceil() as usize);
             food -= births;
 
             self.population + births
@@ -173,12 +175,12 @@ impl Season {
     }
 
     // [Food, Wood, Stone, Iron]
-    pub fn production(&self) -> [usize; 4] {
+    pub fn production(&self) -> [f32; 4] {
         match self {
-            Self::Spring => [1, 1, 0, 0],
-            Self::Summer => [2, 0, 0, 0],
-            Self::Autumn => [1, 0, 1, 0],
-            Self::Winter => [0, 0, 0, 1],
+            Self::Spring => [1.5, 0.2, 0.1, 0.0],
+            Self::Summer => [3.5, 0.0, 0.0, 0.0],
+            Self::Autumn => [1.5, 0.0, 0.1, 0.0],
+            Self::Winter => [0.5, 0.0, 0.0, 0.1],
         }
     }
 }
