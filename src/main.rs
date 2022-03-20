@@ -34,13 +34,14 @@ fn main() {
         if economy.extinct() {
             disable_raw_mode().unwrap();
             execute!(terminal.backend_mut(), LeaveAlternateScreen).unwrap();
+            terminal.clear().unwrap();
             terminal.show_cursor().unwrap();
 
             println!("The human race is extinct! 🎉");
             break;
         }
 
-        std::thread::sleep(Duration::from_secs(1));
-        // std::thread::sleep(Duration::from_millis(50));
+        // std::thread::sleep(Duration::from_secs(1));
+        std::thread::sleep(Duration::from_millis(50));
     }
 }

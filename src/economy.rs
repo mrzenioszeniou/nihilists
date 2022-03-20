@@ -5,7 +5,7 @@ use strum::{AsRefStr, EnumIter, IntoEnumIterator};
 use crate::nihilists::Nihilists;
 
 const FOOD_TO_BABIES: f32 = 0.05;
-const FOOD_TO_DEATHS: f32 = 0.5;
+const FOOD_TO_DEATHS: f32 = 0.8;
 const EFFICIENCY_STEP: f32 = 0.001;
 const STORAGE_STEP: usize = 1;
 const HOUSING_STEP: usize = 1;
@@ -95,14 +95,14 @@ impl Economy {
 
             // Babies!
             let space = self.population_cap - self.population;
-            let births = std::cmp::min(space, (food as f32 * FOOD_TO_BABIES).ceil() as usize);
+            let births = std::cmp::min(space, (food as f32 * FOOD_TO_BABIES) as usize);
             food -= births;
 
             self.population + births
         } else {
             let missing_food = self.population - food;
             food = 0;
-            self.population - (missing_food as f32 * FOOD_TO_DEATHS) as usize
+            self.population - (missing_food as f32 * FOOD_TO_DEATHS).ceil() as usize
         };
 
         // Increase efficiency
