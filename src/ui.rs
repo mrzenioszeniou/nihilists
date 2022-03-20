@@ -8,11 +8,11 @@ use tui::{
 };
 
 use crate::{
-    economy::{Building, Economy, Season},
-    nihilists::Nihilists,
+    economy::{Building, Season},
+    state::State,
 };
 
-pub fn draw<B: Backend>(frame: &mut Frame<B>, economy: &Economy, nils: &Nihilists) {
+pub fn draw<B: Backend>(frame: &mut Frame<B>, state: &State) {
     // Screen
     let layout = Layout::default()
         .direction(Direction::Vertical)
@@ -32,10 +32,10 @@ pub fn draw<B: Backend>(frame: &mut Frame<B>, economy: &Economy, nils: &Nihilist
         .split(layout[0]);
 
     //------ Calendar ------------------------------------------------------------------------------
-    let season = Season::from(economy.day);
+    let season = Season::from(state.economy.day);
     frame.render_widget(
         Block::default()
-            .title(format!("📆 Day {} - {}", economy.day, season))
+            .title(format!("📆 Day {} - {}", state.economy.day, season))
             .borders(Borders::ALL),
         top_layout[0],
     );
@@ -51,19 +51,19 @@ pub fn draw<B: Backend>(frame: &mut Frame<B>, economy: &Economy, nils: &Nihilist
     // Population
     list_items.push(ListItem::new(format!(
         "👪 Population  {}",
-        economy.population
+        state.economy.population
     )));
 
     // Population Cap
     list_items.push(ListItem::new(format!(
         "🏠 Housing     {}",
-        economy.population_cap
+        state.economy.population_cap
     )));
 
     // Population Cap
     list_items.push(ListItem::new(format!(
         "🏭 Efficiency  {:.1}%",
-        economy.efficiency * 100.0
+        state.economy.efficiency * 100.0
     )));
 
     frame.render_widget(List::new(list_items), calender_layout[0]);
@@ -91,27 +91,39 @@ pub fn draw<B: Backend>(frame: &mut Frame<B>, economy: &Economy, nils: &Nihilist
     let food_gauge = Gauge::default()
         .block(Block::default())
         .gauge_style(Style::default().fg(Color::LightRed))
-        .label(format!("🍖 {:>4}/{}", economy.food, economy.storage))
-        .percent((100 * economy.food / economy.storage) as u16);
+        .label(format!(
+            "🍖 {:>4}/{}",
+            state.economy.food, state.economy.storage
+        ))
+        .percent((100 * state.economy.food / state.economy.storage) as u16);
     frame.render_widget(food_gauge, storage_layout[0]);
 
     let wood_gauge = Gauge::default()
         .gauge_style(Style::default().fg(Color::LightGreen))
-        .label(format!("🪵 {:>4}/{}", economy.wood, economy.storage))
-        .percent((100 * economy.wood / economy.storage) as u16);
+        .label(format!(
+            "🪵 {:>4}/{}",
+            state.economy.wood, state.economy.storage
+        ))
+        .percent((100 * state.economy.wood / state.economy.storage) as u16);
     frame.render_widget(wood_gauge, storage_layout[1]);
 
     let stone_gauge = Gauge::default()
         .gauge_style(Style::default().fg(Color::Gray))
-        .label(format!("🪨 {:>4}/{}", economy.stone, economy.storage))
-        .percent((100 * economy.stone / economy.storage) as u16);
+        .label(format!(
+            "🪨 {:>4}/{}",
+            state.economy.stone, state.economy.storage
+        ))
+        .percent((100 * state.economy.stone / state.economy.storage) as u16);
     frame.render_widget(stone_gauge, storage_layout[2]);
 
     let iron_gauge = Gauge::default()
         .block(Block::default())
         .gauge_style(Style::default().fg(Color::LightYellow))
-        .label(format!("🪙 {:>4}/{}", economy.iron, economy.storage))
-        .percent((100 * economy.iron / economy.storage) as u16);
+        .label(format!(
+            "🪙 {:>4}/{}",
+            state.economy.iron, state.economy.storage
+        ))
+        .percent((100 * state.economy.iron / state.economy.storage) as u16);
     frame.render_widget(iron_gauge, storage_layout[3]);
     //----------------------------------------------------------------------------------------------
 
@@ -145,31 +157,63 @@ pub fn draw<B: Backend>(frame: &mut Frame<B>, economy: &Economy, nils: &Nihilist
     frame.render_widget(
         List::new(vec![
             // Undercover
-            ListItem::new(format!("  🥸 Undercover {:>3}", nils.undercover)),
+            ListItem::new(format!(
+                "{} 🥸 Undercover {:>3}",
+                if state.control == (0, 0) { '▶' } else { ' ' },
+                state.nihilists.undercover,
+            )),
             // Recruiters
-            ListItem::new(format!("  🤝 Recruiters {:>3}", nils.recruiters)),
+            ListItem::new(format!(
+                "{} 🤝 Recruiters {:>3}",
+                if state.control == (0, 1) { '▶' } else { ' ' },
+                state.nihilists.recruiters
+            )),
             // Vee cur off your Johnson
-            ListItem::new(format!("  🔪 Hitmen {:>7}", nils.hitmen)),
+            ListItem::new(format!(
+                "{} 🔪 Hitmen {:>7}",
+                if state.control == (0, 2) { '▶' } else { ' ' },
+                state.nihilists.hitmen
+            )),
             // Efficiency§
-            ListItem::new(format!("  ⚙️  Efficiency {:.1}%", nils.efficiency * 100.0)),
+            ListItem::new(format!(
+                "  ⚙️  Efficiency {:.1}%",
+                state.nihilists.efficiency * 100.0
+            )),
         ]),
         nihilists_layout[0],
     );
 
-    for (i, building) in Building::iter().enumerate() {
+    for (mut i, building) in Building::iter().enumerate() {
+        i += 1;
+
         frame.render_widget(
             List::new(vec![
                 ListItem::new(format!(
-                    "  📣 Agitators {}",
-                    nils.agitators.get(&building).unwrap()
+                    "{} 📣 Agitators {}",
+                    if i == state.control.0 && state.control.1 == 0 {
+                        '▶'
+                    } else {
+                        ' '
+                    },
+                    state.nihilists.agitators.get(&building).unwrap()
                 )),
                 ListItem::new(format!(
-                    "  🧨 Saboteurs {}",
-                    nils.saboteurs.get(&building).unwrap()
+                    "{} 🧨 Saboteurs {}",
+                    if i == state.control.0 && state.control.1 == 1 {
+                        '▶'
+                    } else {
+                        ' '
+                    },
+                    state.nihilists.saboteurs.get(&building).unwrap()
                 )),
                 ListItem::new(format!(
-                    "  💰 Embezzlers {}",
-                    nils.embezzlers.get(&building).unwrap()
+                    "{} 💰 Embezzlers {}",
+                    if i == state.control.0 && state.control.1 == 2 {
+                        '▶'
+                    } else {
+                        ' '
+                    },
+                    state.nihilists.embezzlers.get(&building).unwrap()
                 )),
             ])
             .block(
@@ -177,7 +221,7 @@ pub fn draw<B: Backend>(frame: &mut Frame<B>, economy: &Economy, nils: &Nihilist
                     .title(building.to_string())
                     .borders(Borders::ALL),
             ),
-            nihilists_layout[i + 1],
+            nihilists_layout[i],
         );
     }
     //----------------------------------------------------------------------------------------------

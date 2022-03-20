@@ -1,47 +1,70 @@
 pub mod economy;
 pub mod nihilists;
+pub mod state;
 pub mod ui;
 
 use crossterm::{
+    event::{self, Event, KeyCode},
     execute,
-    terminal::{disable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use economy::Economy;
-use nihilists::Nihilists;
-use std::time::Duration;
+
+use state::State;
+use std::time::{Duration, Instant};
 use tui::{backend::CrosstermBackend, Terminal};
 
 fn main() {
+    enable_raw_mode().unwrap();
     let mut stdout = std::io::stdout();
     execute!(stdout, EnterAlternateScreen).unwrap();
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend).unwrap();
 
-    let mut economy = Economy::default();
-    let mut nihilists = Nihilists::default();
+    let mut state = State::default();
+
+    let day_duration = Duration::from_secs(1);
+    let tick_duration = Duration::from_millis(100);
+    let mut last_tick = Instant::now();
 
     loop {
-        terminal
-            .draw(|frame| ui::draw(frame, &economy, &nihilists))
-            .unwrap();
+        let mut should_quit = false;
 
-        economy = economy.next(&nihilists);
-        nihilists = nihilists.next();
+        if crossterm::event::poll(Duration::from_millis(1)).unwrap() {
+            if let Event::Key(key) = event::read().unwrap() {
+                match key.code {
+                    KeyCode::Char('Q') | KeyCode::Char('q') => should_quit = true,
+                    KeyCode::Left => state.left(),
+                    KeyCode::Up => state.up(),
+                    KeyCode::Right => state.right(),
+                    KeyCode::Down => state.down(),
+                    _ => {}
+                }
+            }
+        }
 
-        // println!("{}", state);
-        // println!("{}", nihilists);
+        let now = Instant::now();
 
-        if economy.extinct() {
+        if now.duration_since(last_tick) >= day_duration {
+            state = state.next();
+            last_tick = Instant::now();
+        }
+
+        terminal.draw(|frame| ui::draw(frame, &state)).unwrap();
+
+        if state.economy.extinct() || should_quit {
             disable_raw_mode().unwrap();
             execute!(terminal.backend_mut(), LeaveAlternateScreen).unwrap();
             terminal.clear().unwrap();
             terminal.show_cursor().unwrap();
+            disable_raw_mode().unwrap();
 
-            println!("The human race is extinct! 🎉");
+            if state.economy.extinct() {
+                println!("The human race is extinct! 🎉");
+            }
+
             break;
         }
 
-        std::thread::sleep(Duration::from_secs(1));
-        // std::thread::sleep(Duration::from_millis(50));
+        std::thread::sleep(tick_duration);
     }
 }
