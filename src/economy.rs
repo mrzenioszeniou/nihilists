@@ -42,7 +42,7 @@ impl Display for Economy {
         writeln!(f)?;
         writeln!(f, "👨‍👩‍👧‍👦 {:>5}", self.population)?;
         writeln!(f, "🛖 {:>5}", self.population_cap)?;
-        writeln!(f, "-------------------------")
+        writeln!(f, "-------------------------\n\n\n")
     }
 }
 
@@ -148,7 +148,7 @@ pub enum Resource {
     Iron,  //    Excess => +efficiency |  Lack =>
 }
 
-#[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, EnumIter)]
 pub enum Building {
     Lumberyard,
     Quarry,
