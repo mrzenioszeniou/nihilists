@@ -33,6 +33,8 @@ fn main() {
             if let Event::Key(key) = event::read().unwrap() {
                 match key.code {
                     KeyCode::Char('Q') | KeyCode::Char('q') => should_quit = true,
+                    KeyCode::Char('+') => state.plus(),
+                    KeyCode::Char('-') => state.minus(),
                     KeyCode::Left => state.left(),
                     KeyCode::Up => state.up(),
                     KeyCode::Right => state.right(),

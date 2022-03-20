@@ -167,6 +167,18 @@ impl std::fmt::Display for Building {
     }
 }
 
+impl From<usize> for Building {
+    fn from(from: usize) -> Self {
+        match from {
+            0 => Self::Lumberyard,
+            1 => Self::Quarry,
+            2 => Self::Foundry,
+            3 => Self::Hunting,
+            _ => unreachable!(),
+        }
+    }
+}
+
 #[derive(Debug, EnumIter, AsRefStr)]
 pub enum Season {
     Spring,
