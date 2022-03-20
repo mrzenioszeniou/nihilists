@@ -227,7 +227,14 @@ pub fn draw<B: Backend>(frame: &mut Frame<B>, state: &State) {
     //----------------------------------------------------------------------------------------------
 
     frame.render_widget(
-        Block::default().title("Headlines").borders(Borders::ALL),
+        List::new(
+            state
+                .headlines
+                .iter()
+                .map(|h| ListItem::new(h.to_string()))
+                .collect::<Vec<ListItem>>(),
+        )
+        .block(Block::default().title("Headlines").borders(Borders::ALL)),
         layout[2],
     );
 }

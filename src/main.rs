@@ -22,7 +22,7 @@ fn main() {
 
     let mut state = State::default();
 
-    let day_duration = Duration::from_secs(1);
+    let day_duration = Duration::from_millis(500);
     let tick_duration = Duration::from_millis(100);
     let mut last_tick = Instant::now();
 

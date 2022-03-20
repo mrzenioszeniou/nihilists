@@ -4,9 +4,9 @@ use strum::IntoEnumIterator;
 
 use crate::economy::Building;
 
-const AGITATOR_MODIFIER: f32 = 0.01;
+const AGITATOR_MODIFIER: f32 = 0.90;
 const SABOTEUR_LIKELIHOOD: f32 = 0.01;
-const EMBEZZLER_MODIFIER: f32 = 0.01;
+const EMBEZZLER_MODIFIER: f32 = 0.99;
 const RECRUITER_LIKELIHOOD: f32 = 0.01;
 const HITMAN_LIKELIHOOD: f32 = 0.01;
 const EFFICIENCY_STEP: f32 = 0.001;
@@ -54,9 +54,9 @@ impl Display for Nihilists {
         writeln!(
             f,
             "🪙 {:<9} {:<9} {}",
-            self.agitators.get(&Building::Foundry).unwrap(),
-            self.saboteurs.get(&Building::Foundry).unwrap(),
-            self.embezzlers.get(&Building::Foundry).unwrap(),
+            self.agitators.get(&Building::Mine).unwrap(),
+            self.saboteurs.get(&Building::Mine).unwrap(),
+            self.embezzlers.get(&Building::Mine).unwrap(),
         )?;
         writeln!(f)?;
         writeln!(f, "🕵️ {:>5}", self.undercover)?;
@@ -84,7 +84,7 @@ impl Nihilists {
     }
 
     pub fn agitator_modifier(&self, building: &Building) -> f32 {
-        *self.agitators.get(building).unwrap() as f32 * AGITATOR_MODIFIER * self.efficiency
+        (AGITATOR_MODIFIER * self.efficiency).powi(*self.agitators.get(building).unwrap() as i32)
     }
 
     pub fn sabotaged(&mut self, building: &Building) -> bool {
@@ -95,13 +95,15 @@ impl Nihilists {
     }
 
     pub fn embezzlement(&self, building: &Building) -> f32 {
-        *self.embezzlers.get(building).unwrap() as f32 * EMBEZZLER_MODIFIER * self.efficiency
+        (EMBEZZLER_MODIFIER * self.efficiency).powi(*self.embezzlers.get(building).unwrap() as i32)
     }
 
-    pub fn hit(&mut self) -> bool {
-        let hit_likelihood = self.hitmen as f32 * HITMAN_LIKELIHOOD * self.efficiency;
+    pub fn hit(&mut self) -> usize {
+        let hit_likelihood = HITMAN_LIKELIHOOD * self.efficiency;
 
-        self.rng.gen::<f32>() < hit_likelihood
+        (0..self.hitmen)
+            .filter(|_| self.rng.gen::<f32>() < hit_likelihood)
+            .count()
     }
 }
 
@@ -115,7 +117,7 @@ impl Default for Nihilists {
             recruiters: 0,
             hitmen: 0,
 
-            undercover: 1,
+            undercover: 10,
             efficiency: 1.0,
             rng: rand::thread_rng(),
         }

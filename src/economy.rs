@@ -70,17 +70,63 @@ impl Economy {
         self.population < 2
     }
 
-    pub fn next(&self, _: &Nihilists) -> Self {
+    pub fn next(&self, nils: &mut Nihilists) -> (Self, Vec<String>) {
+        // Headlines
+        let mut headlines = vec![];
+
         // Get the standard production per citizen based on the season
         let production = Season::from(self.day).production();
 
         let population_f = self.population as f32;
 
-        // Multiply it by the population and efficiency modifier
-        let mut food = (production[0] * population_f * self.efficiency) as usize;
-        let mut wood = (production[1] * population_f * self.efficiency) as usize;
-        let mut stone = (production[2] * population_f * self.efficiency) as usize;
-        let mut iron = (production[3] * population_f * self.efficiency) as usize;
+        // Multiply it by the population and efficiency modifier and embezzlement modifier
+        let mut food = (production[0]
+            * population_f
+            * self.efficiency
+            * nils.agitator_modifier(&Building::Hunting)) as usize;
+        let mut wood = (production[1]
+            * population_f
+            * self.efficiency
+            * nils.agitator_modifier(&Building::Lumberyard)) as usize;
+        let mut stone = (production[2]
+            * population_f
+            * self.efficiency
+            * nils.agitator_modifier(&Building::Quarry)) as usize;
+        let mut iron = (production[3]
+            * population_f
+            * self.efficiency
+            * nils.agitator_modifier(&Building::Mine)) as usize;
+
+        // Sabotage
+        if nils.sabotaged(&Building::Hunting) {
+            headlines.push(format!(
+                "[Day {:>3}] Hunting accident involving a bad arrows suspends meat production!",
+                self.day
+            ));
+            food = 0;
+        }
+        if nils.sabotaged(&Building::Lumberyard) {
+            headlines.push(format!(
+                "[Day {:>3}] Lumberyard out of commission - all axes mysteriously blunt!",
+                self.day
+            ));
+            wood = 0;
+        }
+        if nils.sabotaged(&Building::Quarry) {
+            headlines.push(format!(
+                "[Day {:>3}] Quarry flooded! Investigation into faulty pressure regulators",
+                self.day
+            ));
+            stone = 0;
+        }
+        if nils.sabotaged(&Building::Mine) {
+            headlines.push(format!(
+                "[Day {:>3}] Cavein at the mine! Suspicious explosion at the lower levels.",
+                self.day
+            ));
+
+            iron = 0;
+        }
 
         // Add the previous stockpiles
         food += self.food;
@@ -88,8 +134,14 @@ impl Economy {
         stone += self.stone;
         iron += self.iron;
 
+        // Embezzle
+        food = (food as f32 * nils.embezzlement(&Building::Hunting)) as usize;
+        wood = (wood as f32 * nils.embezzlement(&Building::Lumberyard)) as usize;
+        stone = (stone as f32 * nils.embezzlement(&Building::Quarry)) as usize;
+        iron = (iron as f32 * nils.embezzlement(&Building::Mine)) as usize;
+
         // Feed the masses
-        let population = if food >= self.population {
+        let mut population = if food >= self.population {
             // Feed the current population
             food -= self.population;
 
@@ -104,6 +156,16 @@ impl Economy {
             food = 0;
             self.population - (missing_food as f32 * FOOD_TO_DEATHS).ceil() as usize
         };
+
+        // Hitmen TODO: Headline
+        let hits = nils.hit();
+        population = population.saturating_sub(hits);
+        if hits > 0 {
+            headlines.push(format!(
+                "[Day {:>3}] {} found dead this morning. Authorities launch investigation.",
+                self.day, hits
+            ))
+        }
 
         // Increase efficiency
         let mut efficiency = self.efficiency;
@@ -126,17 +188,24 @@ impl Economy {
             wood -= 1;
         }
 
-        Self {
-            food: std::cmp::min(food, self.storage),
-            wood: std::cmp::min(wood, self.storage),
-            stone: std::cmp::min(stone, self.storage),
-            iron: std::cmp::min(iron, self.storage),
-            storage: storage_size,
-            efficiency,
-            population,
-            population_cap,
-            day: self.day + 1,
+        if headlines.is_empty() {
+            headlines.push(format!("[Day {:>3}] Another lovely day!", self.day))
         }
+
+        (
+            Self {
+                food: std::cmp::min(food, self.storage),
+                wood: std::cmp::min(wood, self.storage),
+                stone: std::cmp::min(stone, self.storage),
+                iron: std::cmp::min(iron, self.storage),
+                storage: storage_size,
+                efficiency,
+                population,
+                population_cap,
+                day: self.day + 1,
+            },
+            headlines,
+        )
     }
 }
 
@@ -150,19 +219,19 @@ pub enum Resource {
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, EnumIter)]
 pub enum Building {
+    Hunting,
     Lumberyard,
     Quarry,
-    Foundry,
-    Hunting,
+    Mine,
 }
 
 impl std::fmt::Display for Building {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Lumberyard => write!(f, "🏹 Hunter's Lodge 🍖"),
-            Self::Quarry => write!(f, "🪓 Lumberyard 🪵"),
-            Self::Foundry => write!(f, "⛏ Quarry 🪨"),
-            Self::Hunting => write!(f, "🔨 Mine 🪙"),
+            Self::Lumberyard => write!(f, "🪓 Lumberyard 🪵"),
+            Self::Quarry => write!(f, "⛏ Quarry 🪨"),
+            Self::Mine => write!(f, "🔨 Mine 🪙"),
+            Self::Hunting => write!(f, "🏹 Hunter's Lodge 🍖"),
         }
     }
 }
@@ -170,10 +239,10 @@ impl std::fmt::Display for Building {
 impl From<usize> for Building {
     fn from(from: usize) -> Self {
         match from {
-            0 => Self::Lumberyard,
-            1 => Self::Quarry,
-            2 => Self::Foundry,
-            3 => Self::Hunting,
+            0 => Self::Hunting,
+            1 => Self::Lumberyard,
+            2 => Self::Quarry,
+            3 => Self::Mine,
             _ => unreachable!(),
         }
     }

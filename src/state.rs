@@ -8,14 +8,22 @@ pub struct State {
     pub economy: Economy,
     pub nihilists: Nihilists,
     pub control: (usize, usize),
+    pub headlines: Vec<String>,
 }
 
 impl State {
     pub fn next(&self) -> Self {
+        let mut nihilists = self.nihilists.clone();
+
+        let (economy, mut headlines) = self.economy.next(&mut nihilists);
+
+        headlines.extend(self.headlines.iter().cloned());
+
         Self {
-            economy: self.economy.next(&self.nihilists),
-            nihilists: self.nihilists.next(),
+            economy,
+            nihilists: nihilists.next(),
             control: self.control,
+            headlines,
         }
     }
 
@@ -53,7 +61,7 @@ impl State {
             (0, 1) => self.nihilists.recruiters += 1,
             (0, 2) => self.nihilists.hitmen += 1,
             (building, num) => {
-                let building = Building::from(building);
+                let building = Building::from(building - 1);
 
                 let nihilists: &mut usize = match num {
                     0 => self.nihilists.agitators.get_mut(&building).unwrap(),
@@ -75,7 +83,7 @@ impl State {
             (0, 1) if self.nihilists.recruiters > 0 => self.nihilists.recruiters -= 1,
             (0, 2) if self.nihilists.hitmen > 0 => self.nihilists.hitmen -= 1,
             (building, num) => {
-                let building = Building::from(building);
+                let building = Building::from(building - 1);
 
                 let nihilists: &mut usize = match num {
                     0 => self.nihilists.agitators.get_mut(&building).unwrap(),
@@ -86,6 +94,8 @@ impl State {
 
                 if *nihilists > 0 {
                     *nihilists -= 1;
+                } else {
+                    return;
                 }
             }
         }
